@@ -14,12 +14,9 @@ Synchronized into this repository under:
 
 ## Current Synchronized Revision
 
-- Upstream commit: f658b9abef15732354e608f541493e487d20c5bd
+- Upstream commit: 53a5cd98f5291b2d7ba5ca88b4e115c315bdf953
 
-Note: this revision currently lives on the upstream `uart-async-transfer-model`
-branch (the asynchronous transfer model + safety checks), pending merge to `main`
-via the upstream pull request. Once that merge lands, re-running the sync tool
-against `main` reproduces the same content.
+This revision is synchronized from the upstream `main` branch.
 
 ## Update Policy
 

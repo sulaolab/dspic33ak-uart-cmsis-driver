@@ -51,8 +51,13 @@ The initial implementation targets UART1 in asynchronous (UART) mode only:
 `ARM_DRIVER_ERROR_UNSUPPORTED`. See `cmsis_driver/README.md` for details.
 
 `RTE_Device_USART_dsPIC33AK_example.h` is a USART-only example configuration file.
-Integrated applications should copy the required definitions into their own
-application-level `RTE_Device.h` or equivalent configuration header.
+
+The wrapper currently includes this USART-only example header directly. For a
+real application, either edit/copy this example for the target board, or adjust
+the wrapper include to point to the application's own configuration header.
+
+Do not use a generic `RTE_Device.h` in this repository, and do not add I2C/SPI/etc.
+settings to this USART example file.
 
 A minimal copy of the ARM CMSIS-Driver API headers (`Driver_USART.h`,
 `Driver_Common.h`) is vendored under `third_party/arm_cmsis_driver/Include/` so
