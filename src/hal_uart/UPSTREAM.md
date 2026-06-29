@@ -14,7 +14,7 @@ Synchronized into this repository under:
 
 ## Current Synchronized Revision
 
-- Upstream commit: 69df810260833b2fa73fee2be35474b8eba64919
+- Upstream commit: 06306232330ac3cd36756254f9e51d3ad36636b9
 
 This revision is synchronized from the upstream `add-rx-start-clean` branch.
 
