@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -12,7 +13,7 @@ from pathlib import Path
 
 
 UPSTREAM_REPO = "https://github.com/sulaolab/dspic33ak-uart-hal.git"
-UPSTREAM_BRANCH = "main"
+UPSTREAM_BRANCH = os.environ.get("DSPIC33AK_UART_HAL_BRANCH", "main")
 UPSTREAM_SOURCE_DIR = "src"
 DESTINATION_DIR = "src/hal_uart"
 
@@ -97,6 +98,22 @@ def update_upstream_md(repo_root: Path, upstream_commit: str) -> None:
     )
     if replacements != 1:
         raise SystemExit("Could not update upstream commit line in src/hal_uart/UPSTREAM.md")
+    updated, replacements = re.subn(
+        r"- Branch: .+",
+        f"- Branch: {UPSTREAM_BRANCH}",
+        updated,
+        count=1,
+    )
+    if replacements != 1:
+        raise SystemExit("Could not update upstream branch line in src/hal_uart/UPSTREAM.md")
+    updated, replacements = re.subn(
+        r"This revision is synchronized from the upstream `[^`]+` branch\.",
+        f"This revision is synchronized from the upstream `{UPSTREAM_BRANCH}` branch.",
+        updated,
+        count=1,
+    )
+    if replacements != 1:
+        raise SystemExit("Could not update upstream branch note in src/hal_uart/UPSTREAM.md")
     upstream_md.write_text(updated, encoding="utf-8", newline="\n")
 
 
