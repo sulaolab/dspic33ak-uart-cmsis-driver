@@ -34,7 +34,7 @@ be added later following the same pattern.
 - `ARM_USART_MODE_ASYNCHRONOUS` only
 - 8 data bits, no parity, 1 stop bit, no flow control
 - `Send()` (non-blocking) on top of `dspic33ak_uart_tx_start()`
-- `Receive()` (non-blocking) on top of `dspic33ak_uart_rx_start()`
+- `Receive()` (non-blocking) on top of `dspic33ak_uart_rx_start_clean()`
 - `GetTxCount()` / `GetRxCount()`
 - `Control(ARM_USART_CONTROL_TX, ...)` / `Control(ARM_USART_CONTROL_RX, ...)`
 - `Control(ARM_USART_MODE_ASYNCHRONOUS | 8N1 | no-flow, baudrate)`
@@ -52,8 +52,8 @@ signals `ARM_USART_EVENT_TX_COMPLETE`, and `capabilities.event_tx_complete` is 0
 
 ## Unsupported features and limitations
 
-The initial wrapper intentionally does not support (capabilities report 0; calls
-return `ARM_DRIVER_ERROR_UNSUPPORTED`):
+The initial wrapper intentionally does not support the following features
+(capabilities report 0 where applicable):
 
 - Synchronous master / synchronous slave
 - Single-wire, IrDA, Smart Card
@@ -64,14 +64,18 @@ return `ARM_DRIVER_ERROR_UNSUPPORTED`):
 - `SetModemControl()` returns `ARM_DRIVER_ERROR_UNSUPPORTED`; `GetModemStatus()`
   returns an all-zero status
 
+Unsupported data bits, parity, stop bits, and flow control options return the
+CMSIS USART-specific `ARM_USART_ERROR_*` code. Other unsupported operations
+return `ARM_DRIVER_ERROR_UNSUPPORTED`.
+
 ## Transfer-state requirements
 
 - `Send()` requires TX enabled and a non-zero `tx_irq_priority`; otherwise the
   underlying `dspic33ak_uart_tx_start()` reports unsupported (a transfer with no
   servicing interrupt would never complete).
-- `Receive()` requires RX enabled and ISR ring RX mode. The wrapper flushes the
-  RX ISR ring at the start of `Receive()`, so a transfer captures only bytes that
-  arrive after the call.
+- `Receive()` requires RX enabled and ISR ring RX mode. It starts a clean async
+  receive, discarding old ring/FIFO bytes without opening a flush/start race
+  window.
 - `Control(ARM_USART_CONTROL_TX/RX, 0)` (disable) is rejected with
   `ARM_DRIVER_ERROR_BUSY` while a transfer on that direction is active.
 - The buffer passed to `Send()` must stay valid until
@@ -88,13 +92,12 @@ The HAL does not define the device interrupt vectors. The application owns them:
 - For async TX, the `_UxTXInterrupt` vector must call
   `dspic33ak_uart_tx_irq_handler()`.
 
-## Configuration through RTE_Device_USART_dsPIC33AK_example.h
+## Configuration through RTE_Device_USART_dsPIC33AK.h
 
 `RTE_Device_USART_dsPIC33AK_example.h` is an example configuration file for this
-USART CMSIS-Driver wrapper. It is not intended to be a shared application-level
-`RTE_Device.h`; in an integrated application, copy the required USART definitions
-into that application's own `RTE_Device.h` or equivalent configuration header. Do
-not add I2C/SPI/etc. settings to this USART example file.
+USART CMSIS-Driver wrapper. Copy it to `RTE_Device_USART_dsPIC33AK.h` for the
+target application; the wrapper includes that standard USART-specific header.
+Do not add I2C/SPI/etc. settings to this USART example file.
 
 Example:
 
@@ -125,6 +128,9 @@ src/hal_uart
 cmsis_driver
 third_party/arm_cmsis_driver/Include
 ```
+
+The application-specific directory containing `RTE_Device_USART_dsPIC33AK.h`
+must also be on the include path.
 
 `Driver_USART.h` is resolved from the vendored ARM CMSIS-Driver headers under
 `third_party/arm_cmsis_driver/Include/` (Apache-2.0, copied unmodified). A
@@ -168,5 +174,5 @@ UART1 at 230400 baud, 8N1):
   `GetRxCount() == 16`, and the received bytes match what was sent.
 - A second `Send()` / `Receive()` while one is active returns `ARM_DRIVER_ERROR_BUSY`.
 - `Control(ARM_USART_ABORT_SEND / ABORT_RECEIVE)` aborts an active transfer.
-- Unsupported modes/options (synchronous, IrDA, RTS/CTS, parity, 2 stop bits)
-  return `ARM_DRIVER_ERROR_UNSUPPORTED`.
+- Unsupported modes return `ARM_DRIVER_ERROR_UNSUPPORTED`; unsupported format
+  and flow-control options return the matching CMSIS USART-specific error.

@@ -47,14 +47,13 @@ The CMSIS-Driver wrapper files are provided under `cmsis_driver/`.
 The wrapper maps the ARM CMSIS-Driver USART API onto the UART HAL asynchronous
 transfer model (non-blocking `Send`/`Receive` with completion and error events).
 The initial implementation targets UART1 in asynchronous (UART) mode only:
-8 data bits, no parity, 1 stop bit, no flow control. Other modes/options report
-`ARM_DRIVER_ERROR_UNSUPPORTED`. See `cmsis_driver/README.md` for details.
+8 data bits, no parity, 1 stop bit, no flow control. Unsupported format/control
+options return CMSIS USART-specific errors where available. See
+`cmsis_driver/README.md` for details.
 
 `RTE_Device_USART_dsPIC33AK_example.h` is a USART-only example configuration file.
-
-The wrapper currently includes this USART-only example header directly. For a
-real application, either edit/copy this example for the target board, or adjust
-the wrapper include to point to the application's own configuration header.
+Copy it to `RTE_Device_USART_dsPIC33AK.h` for the target application; the wrapper
+includes that standard USART-specific configuration header.
 
 Do not use a generic `RTE_Device.h` in this repository, and do not add I2C/SPI/etc.
 settings to this USART example file.
