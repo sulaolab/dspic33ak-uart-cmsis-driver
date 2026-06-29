@@ -14,7 +14,7 @@ Synchronized into this repository under:
 
 ## Current Synchronized Revision
 
-- Upstream commit: 53a5cd98f5291b2d7ba5ca88b4e115c315bdf953
+- Upstream commit: ef455afe37179ab7fbbf447442dd0f730be172a2
 
 This revision is synchronized from the upstream `main` branch.
 

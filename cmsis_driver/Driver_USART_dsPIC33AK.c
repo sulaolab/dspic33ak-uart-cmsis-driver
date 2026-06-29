@@ -8,16 +8,17 @@
  * HAL.
  *
  * Supported (initial): ARM_USART_MODE_ASYNCHRONOUS, 8 data bits, no parity,
- * 1 stop bit, no flow control. Everything else returns
- * ARM_DRIVER_ERROR_UNSUPPORTED and is reported as unavailable in capabilities.
+ * 1 stop bit, no flow control. Unsupported modes return
+ * ARM_DRIVER_ERROR_UNSUPPORTED; unsupported format/control options return
+ * CMSIS USART-specific ARM_USART_ERROR_* values where available.
  *
- * Send()/Receive() map directly onto dspic33ak_uart_tx_start()/_rx_start():
+ * Send()/Receive() map onto the HAL async transfer API:
  *   - Send(data, num): the caller-provided buffer must remain valid until the
  *     ARM_USART_EVENT_SEND_COMPLETE callback fires (the HAL transmits straight
  *     from it; this wrapper does not copy).
- *   - Receive(data, num): the wrapper flushes the RX ISR ring first, so only
- *     bytes that arrive after Receive() are captured; the caller buffer must
- *     remain valid until ARM_USART_EVENT_RECEIVE_COMPLETE.
+ *   - Receive(data, num): starts a clean RX transfer, discarding pre-existing
+ *     ring/FIFO bytes atomically with arming the async receive; the caller
+ *     buffer must remain valid until ARM_USART_EVENT_RECEIVE_COMPLETE.
  *
  * The signal-event callback may run in interrupt (TX/RX ISR) context: keep it
  * short, do not block, and do not printf or call blocking driver APIs from it.
@@ -33,7 +34,7 @@
 #include <stdint.h>
 
 #include "Driver_USART_dsPIC33AK.h"
-#include "RTE_Device_USART_dsPIC33AK_example.h"
+#include "RTE_Device_USART_dsPIC33AK.h"
 #include "dspic33ak_uart.h"
 
 /* This wrapper's own implementation version (0.x = initial / pre-release). The
@@ -176,6 +177,11 @@ static int32_t USART1_Initialize(ARM_USART_SignalEvent_t cb_event)
 {
     usart_ctx_t *ctx = &usart1_ctx;
 
+    if (ctx->powered) {
+        ctx->cb_event = cb_event;
+        return ARM_DRIVER_OK;
+    }
+
     ctx->cb_event         = cb_event;
     ctx->baudrate         = 0u;
     ctx->uart_clk_hz      = 0u;
@@ -311,11 +317,9 @@ static int32_t USART1_Receive(void *data, uint32_t num)
     ctx->rx_framing_error = 0u;
     ctx->rx_parity_error  = 0u;
 
-    /* Discard bytes buffered in the RX ISR ring before this call so the transfer
-     * captures only post-Receive() data (HAL rx_start only takes new bytes). */
-    dspic33ak_uart_rx_flush(USART1_HAL_INST);
-
-    st = dspic33ak_uart_rx_start(USART1_HAL_INST, (uint8_t *)data, (size_t)num);
+    /* Discard bytes buffered before this call without opening a flush/start
+     * race window; bytes arriving after the clean arm are captured by Receive(). */
+    st = dspic33ak_uart_rx_start_clean(USART1_HAL_INST, (uint8_t *)data, (size_t)num);
     return usart_hal_to_arm(st);
 }
 
@@ -348,16 +352,16 @@ static int32_t usart1_set_async_mode(usart_ctx_t *ctx, uint32_t control, uint32_
         return ARM_DRIVER_ERROR;
     }
     if ((control & ARM_USART_DATA_BITS_Msk) != ARM_USART_DATA_BITS_8) {
-        return ARM_DRIVER_ERROR_UNSUPPORTED;
+        return ARM_USART_ERROR_DATA_BITS;
     }
     if ((control & ARM_USART_PARITY_Msk) != ARM_USART_PARITY_NONE) {
-        return ARM_DRIVER_ERROR_UNSUPPORTED;
+        return ARM_USART_ERROR_PARITY;
     }
     if ((control & ARM_USART_STOP_BITS_Msk) != ARM_USART_STOP_BITS_1) {
-        return ARM_DRIVER_ERROR_UNSUPPORTED;
+        return ARM_USART_ERROR_STOP_BITS;
     }
     if ((control & ARM_USART_FLOW_CONTROL_Msk) != ARM_USART_FLOW_CONTROL_NONE) {
-        return ARM_DRIVER_ERROR_UNSUPPORTED;
+        return ARM_USART_ERROR_FLOW_CONTROL;
     }
     if (arg == 0u) {
         return ARM_DRIVER_ERROR_PARAMETER;
